@@ -1,10 +1,10 @@
-﻿Set-StrictMode -Version Latest
-
-param(
+﻿param(
     [int]$Threshold = 14,
     [string]$Message = "Ваш пароль доменной учетной записи истекает через {0} дн.`n`nДля смены пароля нажмите:`nCtrl + Alt + End → Изменить пароль",
     [string]$Title = "Срок действия пароля"
 )
+
+Set-StrictMode -Version Latest
 
 function Get-ADUserExpiry {
     param([string]$Sid)
