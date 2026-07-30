@@ -34,6 +34,6 @@ powershell -File PasswordExpiryNotify.ps1 -Message "Custom text with {0} days"
 
 - Requires `PresentationFramework` — available on Windows by default
 - No external modules, no test suite
-- `Set-StrictMode -Version Latest` must be present at the top of the script
+- `Set-StrictMode -Version Latest` must be present at the top of the script, **after** `param()` — PowerShell requires `param()` to be the first executable statement
 - `-Message` must contain `{0}` for `-f` operator — an agent should never hardcode a days count
 - See `RDP-NOTIFICATION-PROBLEM.md` — logon scripts don't re-run on RDP reconnect. Solution: deploy via Scheduled Task with SessionUnlock trigger
