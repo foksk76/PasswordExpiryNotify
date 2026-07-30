@@ -1,23 +1,18 @@
 ﻿param(
     [int]$Threshold = 14,
-    [string]$Message = "Ваш пароль доменной учетной записи истекает через {0} дн.`n`nДля смены пароля нажмите:`nCtrl + Alt + End → Изменить пароль",
+    [string]$Message = "Ваш пароль доменной учетной записи истекает через {0} дней`n`nДля смены пароля нажмите:`nCtrl + Alt + End → Изменить пароль",
     [string]$Title = "Срок действия пароля"
 )
 
 Set-StrictMode -Version Latest
 
-function Get-ADUserExpiry {
-    param([string]$Sid)
-
-    $user = [ADSI]"LDAP://<SID=$Sid>"
-    $expiryFileTime = [int64]$user.'msDS-UserPasswordExpiryTimeComputed'.Value
-
-    # 0 — атрибут не задан; 9223372036854775807 (MaxValue FileTime) — never expires
-    if ($expiryFileTime -eq 0 -or $expiryFileTime -eq 9223372036854775807) {
-        return $null
-    }
-
-    return [datetime]::FromFileTime($expiryFileTime)
+function Get-LargeIntegerValue {
+    param($ComObject)
+    if ($null -eq $ComObject) { return 0 }
+    $type = $ComObject.GetType()
+    $high = [int]$type.InvokeMember("HighPart", [System.Reflection.BindingFlags]::GetProperty, $null, $ComObject, $null)
+    $low  = [int]$type.InvokeMember("LowPart",  [System.Reflection.BindingFlags]::GetProperty, $null, $ComObject, $null)
+    return [int64]$high * 4294967296 + ([int64]$low -band 0xFFFFFFFF)
 }
 
 function Show-ExpiryWarning {
@@ -34,16 +29,40 @@ function Show-ExpiryWarning {
 
 try {
     $sid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
-    $expiry = Get-ADUserExpiry -Sid $sid
+    $user = [ADSI]"LDAP://<SID=$sid>"
 
-    if ($null -eq $expiry) {
-        exit
+    $expiryObj = $user.'msDS-UserPasswordExpiryTimeComputed'.Value
+
+    if ($null -ne $expiryObj) {
+        $expiryFileTime = [int64]$expiryObj
+        if ($expiryFileTime -eq 9223372036854775807) { exit }
+        if ($expiryFileTime -ne 0) {
+            $expiryDate = [datetime]::FromFileTime($expiryFileTime)
+            $days = ($expiryDate.Date - (Get-Date).Date).Days
+            if ($days -le $Threshold -and $days -ge 0) {
+                Show-ExpiryWarning -Days $days -Template $Message -Title $Title
+            }
+            exit
+        }
     }
 
-    $days = ($expiry.Date - (Get-Date).Date).Days
+    $uac = [int]$user.userAccountControl.Value
+    if ($uac -band 0x10000) { exit }
 
-    if ($days -le $Threshold -and $days -ge 0) {
-        Show-ExpiryWarning -Days $days -Template $Message -Title $Title
+    $pwdLastSetTicks = Get-LargeIntegerValue ($user.InvokeGet("pwdLastSet"))
+    if ($pwdLastSetTicks -eq 0 -or $pwdLastSetTicks -eq 9223372036854775807) { exit }
+
+    $rootDSE = [ADSI]"LDAP://RootDSE"
+    $domain = [ADSI]"LDAP://$($rootDSE.defaultNamingContext)"
+    $maxPwdAgeTicks = Get-LargeIntegerValue ($domain.InvokeGet("maxPwdAge"))
+    if ($maxPwdAgeTicks -lt 0) { $maxPwdAgeTicks = -$maxPwdAgeTicks }
+    if ($maxPwdAgeTicks -gt 0) {
+        $pwdLastSet = [datetime]::FromFileTime($pwdLastSetTicks)
+        $expiryDate = $pwdLastSet.AddTicks($maxPwdAgeTicks)
+        $days = ($expiryDate.Date - (Get-Date).Date).Days
+        if ($days -le $Threshold -and $days -ge 0) {
+            Show-ExpiryWarning -Days $days -Template $Message -Title $Title
+        }
     }
 }
 catch {

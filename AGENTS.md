@@ -11,7 +11,11 @@ A single PowerShell script that warns domain users about expiring passwords. Win
 ## How it works
 
 - Queries AD via ADSI with current user's SID
-- Reads `msDS-UserPasswordExpiryTimeComputed` — null/0/9223372036854775807 means password never expires
+- Reads `msDS-UserPasswordExpiryTimeComputed`
+  - `9223372036854775807` — password never expires → silent exit
+  - `0` or `$null` — checks `userAccountControl` for DONT_EXPIRE_PASSWD (0x10000); if not set, falls back to `pwdLastSet` + domain `maxPwdAge`
+- Fallback uses `InvokeGet("pwdLastSet")` and `InvokeGet("maxPwdAge")` (not direct property access — ADSI returns `IADsLargeInteger` COM objects that require `HighPart`/`LowPart` conversion via `InvokeMember`)
+- `Get-LargeIntegerValue` helper converts `IADsLargeInteger` to `[int64]` using `[int64]$high * 4294967296 + ([int64]$low -band 0xFFFFFFFF)`
 - Shows a `MessageBox` warning when expiry ≤ `-Threshold`
 - Silent exit on any error (logged via `Write-Warning`)
 
