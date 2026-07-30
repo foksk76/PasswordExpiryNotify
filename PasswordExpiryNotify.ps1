@@ -6,19 +6,24 @@
 
 Set-StrictMode -Version Latest
 
+$cs = Get-WmiObject Win32_ComputerSystem -ErrorAction SilentlyContinue
+if (-not $cs -or -not $cs.PartOfDomain) { exit }
+
+Add-Type -AssemblyName PresentationFramework
+
 function Get-LargeIntegerValue {
     param($ComObject)
     if ($null -eq $ComObject) { return 0 }
     $type = $ComObject.GetType()
     $high = [int]$type.InvokeMember("HighPart", [System.Reflection.BindingFlags]::GetProperty, $null, $ComObject, $null)
     $low  = [int]$type.InvokeMember("LowPart",  [System.Reflection.BindingFlags]::GetProperty, $null, $ComObject, $null)
+    # IADsLargeInteger: high * 2^32 + low (as unsigned)
     return [int64]$high * 4294967296 + ([int64]$low -band 0xFFFFFFFF)
 }
 
 function Show-ExpiryWarning {
     param([int]$Days, [string]$Template, [string]$Title)
 
-    Add-Type -AssemblyName PresentationFramework
     [System.Windows.MessageBox]::Show(
         $Template -f $Days,
         $Title,
@@ -35,6 +40,7 @@ try {
 
     if ($null -ne $expiryObj) {
         $expiryFileTime = [int64]$expiryObj
+        # Max FileTime — password never expires
         if ($expiryFileTime -eq 9223372036854775807) { exit }
         if ($expiryFileTime -ne 0) {
             $expiryDate = [datetime]::FromFileTime($expiryFileTime)
@@ -47,9 +53,11 @@ try {
     }
 
     $uac = [int]$user.userAccountControl.Value
+    # DONT_EXPIRE_PASSWD flag (0x10000) — password never expires
     if ($uac -band 0x10000) { exit }
 
     $pwdLastSetTicks = Get-LargeIntegerValue ($user.InvokeGet("pwdLastSet"))
+    # 0 = never set, Max FileTime = password never expires
     if ($pwdLastSetTicks -eq 0 -or $pwdLastSetTicks -eq 9223372036854775807) { exit }
 
     $rootDSE = [ADSI]"LDAP://RootDSE"

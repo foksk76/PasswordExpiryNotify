@@ -18,14 +18,15 @@ A single PowerShell script that warns domain users about expiring passwords. Win
 - `Get-LargeIntegerValue` helper converts `IADsLargeInteger` to `[int64]` using `[int64]$high * 4294967296 + ([int64]$low -band 0xFFFFFFFF)`
 - Shows a `MessageBox` warning when expiry ≤ `-Threshold`
 - Silent exit on any error (logged via `Write-Warning`)
+- Early exit if not domain-joined (`Win32_ComputerSystem.PartOfDomain`)
 
 ## Usage
 
 ```powershell
 # Run once (logon script or scheduled task)
-powershell -File PasswordExpiryNotify.ps1
-powershell -File PasswordExpiryNotify.ps1 -Threshold 10
-powershell -File PasswordExpiryNotify.ps1 -Message "Custom text with {0} days"
+powershell -ExecutionPolicy Bypass -File PasswordExpiryNotify.ps1
+powershell -ExecutionPolicy Bypass -File PasswordExpiryNotify.ps1 -Threshold 10
+powershell -ExecutionPolicy Bypass -File PasswordExpiryNotify.ps1 -Message "Custom text with {0} days"
 ```
 
 ## Parameters
@@ -40,4 +41,4 @@ powershell -File PasswordExpiryNotify.ps1 -Message "Custom text with {0} days"
 - No external modules, no test suite
 - `Set-StrictMode -Version Latest` must be present at the top of the script, **after** `param()` — PowerShell requires `param()` to be the first executable statement
 - `-Message` must contain `{0}` for `-f` operator — an agent should never hardcode a days count
-- See `RDP-NOTIFICATION-PROBLEM.md` — logon scripts don't re-run on RDP reconnect. Solution: deploy via Scheduled Task with SessionUnlock trigger
+- See `README.md#проблема-rdp` — logon scripts don't re-run on RDP reconnect. Solution: deploy via Scheduled Task with RemoteConnect trigger
