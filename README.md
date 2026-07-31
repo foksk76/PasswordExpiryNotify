@@ -211,17 +211,6 @@ Register-ScheduledTask -TaskName "PasswordExpiryNotify" `
 | Linux — xfreerdp | `Ctrl + Alt + End` (если оконная среда не перехватывает) |
 | macOS | `Ctrl + Alt + Fn + Backspace` |
 
-Универсальный способ (работает в любой RDP-сессии):
-
-```cmd
-wscript.exe -e:VBScript "CreateObject(""Shell.Application"").WindowsSecurity()"
-```
-
-Либо через «Выполнить» (Win+R):
-```
-explorer.exe shell:::{2559a1f2-21d7-11d4-bdaf-00c04f60b9f0}
-```
-
 ## Параметры
 
 | Параметр | По умолчанию | Описание |
