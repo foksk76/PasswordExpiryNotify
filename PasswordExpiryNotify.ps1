@@ -1,5 +1,7 @@
 ﻿param(
+    [ValidateRange(1, [int]::MaxValue)]
     [int]$Threshold = 14,
+    [ValidateScript({ $_ -match '\{0(:[^}]*)?\}' })]
     [string]$Message = "Ваш пароль доменной учетной записи истекает через {0} дней`n`nДля смены пароля нажмите:`nCtrl + Alt + End → Изменить пароль",
     [string]$Title = "Срок действия пароля"
 )

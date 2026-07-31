@@ -34,21 +34,102 @@ Windows, никаких дополнительных модулей не нуж�
 
 ## Установка
 
-### Проверка (ручной запуск)
+### 1. Подпись скрипта
+
+PowerShell при политике `AllSigned` запускает только подписанные скрипты.
+Скрипт нужно подписать сертификатом подписи кода **при каждом изменении**
+(подпись «ломается» от любой правки файла).
+
+Выполните **один** из двух вариантов получения сертификата.
+
+**Вариант А — сертификат от доменного ЦС (рекомендуется; домен с AD CS):**
+автоматически доверяется всеми машинами домена.
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\PasswordExpiryNotify.ps1 -Threshold 14
+$cert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert |
+    Where-Object { $_.NotAfter -gt (Get-Date) } |
+    Select-Object -First 1
+```
+
+**Вариант Б — самоподписанный (только малые домены / одна машина):** `.cer`
+затем разворачивается на клиентах (см. шаг 2).
+
+```powershell
+$cert = New-SelfSignedCertificate -Type CodeSigningCert `
+    -Subject "CN=PasswordExpiryNotify" `
+    -CertStoreLocation Cert:\LocalMachine\My
+Export-Certificate -Cert $cert -FilePath "C:\PasswordExpiryNotify.cer"
+# Импорт на этой же машине — для проверки подписи (требует прав администратора)
+Import-Certificate -FilePath "C:\PasswordExpiryNotify.cer" `
+    -CertStoreLocation Cert:\LocalMachine\Root            # в доверенные корневые
+Import-Certificate -FilePath "C:\PasswordExpiryNotify.cer" `
+    -CertStoreLocation Cert:\LocalMachine\TrustedPublisher # и в доверенных издателей
+```
+
+Подпись и проверка. Подписывается **копия** для развёртывания:
+`Set-AuthenticodeSignature` меняет файл, поэтому в репозитории хранится
+неподписанный оригинал (подписанный файл «ломает» git-копию).
+
+```powershell
+Copy-Item ".\PasswordExpiryNotify.ps1" "C:\deploy\PasswordExpiryNotify.ps1"
+Set-AuthenticodeSignature -FilePath "C:\deploy\PasswordExpiryNotify.ps1" -Certificate $cert
+Get-AuthenticodeSignature "C:\deploy\PasswordExpiryNotify.ps1"   # Status = Valid
+```
+
+> Подпись действительна, пока действителен сертификат (у самоподписанного
+> срок по умолчанию небольшой). Чтобы подпись пережила истечение сертификата,
+> добавьте timestamp-сервер (если есть доступ в интернет):
+> `Set-AuthenticodeSignature ... -TimeStampServer "http://timestamp.digicert.com"`.
+
+### 2. Запрет запуска неподписанных скриптов (GPO)
+
+Политикой выполнения через GPO запрещается запуск неподписанных скриптов
+PowerShell на всех машинах домена (локальный `Bypass` из командной строки
+политикой GPO перекрывается):
+
+```
+Конфигурация компьютера → Административные шаблоны → Компоненты Windows
+  → Windows PowerShell → «Включить выполнение сценариев» → Включено
+    Политика выполнения: «Разрешить только подписанные сценарии» (AllSigned)
+
+Конфигурация пользователя → Административные шаблоны → Компоненты Windows
+  → Windows PowerShell → «Включить выполнение сценариев» → Включено
+    Политика выполнения: «Разрешить только подписанные сценарии» (AllSigned)
+```
+
+Для самоподписанного сертификата (вариант Б) разверните `.cer` на всех
+машинах домена через GPO в **оба** хранилища — без любого из них `AllSigned`
+отклонит подпись:
+
+- `Конфигурация компьютера → Параметры безопасности → Политики открытых ключей
+  → Доверенные корневые центры сертификации` → импорт `.cer` — иначе цепочка
+  сертификатов не строится («ненадёжный корневой сертификат»)
+- `Конфигурация компьютера → Параметры безопасности → Политики открытых ключей
+  → Доверенные издатели` → импорт `.cer` — иначе издатель не считается
+  доверенным
+
+Примените политику: `gpupdate /force`. После этого клиентские машины
+отклоняют любой неподписанный скрипт PowerShell, в том числе переданный
+через `-ExecutionPolicy Bypass`.
+
+### 3. Проверка (ручной запуск)
+
+Запускается подписанная копия из `C:\deploy` — неподписанный оригинал
+в репозитории политика `AllSigned` не пропустит:
+
+```powershell
+powershell -ExecutionPolicy AllSigned -File C:\deploy\PasswordExpiryNotify.ps1 -Threshold 14
 ```
 
 Порог, текст сообщения и заголовок можно передать параметрами:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\PasswordExpiryNotify.ps1 -Threshold 10 -Message "Новый текст с {0} днями" -Title "Заголовок"
+powershell -ExecutionPolicy AllSigned -File C:\deploy\PasswordExpiryNotify.ps1 -Threshold 10 -Message "Новый текст с {0} днями" -Title "Заголовок"
 ```
 
-### Через групповую политику (GPO)
+### 4. Через групповую политику (GPO)
 
-1. Положите `PasswordExpiryNotify.ps1` в сетевую папку (например, `\\domain.local\NETLOGON\`)
+1. Положите **подписанную** копию `PasswordExpiryNotify.ps1` в сетевую папку (например, `\\domain.local\NETLOGON\`)
 2. Создайте запланированное задание в GPO:
    ```
    Конфигурация компьютера → Параметры → Настройки панели управления
@@ -62,7 +143,7 @@ powershell -ExecutionPolicy Bypass -File .\PasswordExpiryNotify.ps1 -Threshold 1
        Действие: Запуск программы
          Программа: powershell
           Аргументы:
-            -WindowStyle Hidden -ExecutionPolicy Bypass -File "\\domain.local\NETLOGON\PasswordExpiryNotify.ps1" 14
+            -WindowStyle Hidden -ExecutionPolicy AllSigned -File "\\domain.local\NETLOGON\PasswordExpiryNotify.ps1" -Threshold 14
    ```
 
 ### На одной машине (вручную)
@@ -106,7 +187,7 @@ powershell -ExecutionPolicy Bypass -File .\PasswordExpiryNotify.ps1 -Threshold 1
   <Actions Context="Author">
     <Exec>
       <Command>powershell</Command>
-      <Arguments>-WindowStyle Hidden -ExecutionPolicy Bypass -File "\\domain.local\NETLOGON\PasswordExpiryNotify.ps1" -Threshold 14</Arguments>
+      <Arguments>-WindowStyle Hidden -ExecutionPolicy AllSigned -File "\\domain.local\NETLOGON\PasswordExpiryNotify.ps1" -Threshold 14</Arguments>
     </Exec>
   </Actions>
 </Task>
@@ -143,8 +224,8 @@ explorer.exe shell:::{2559a1f2-21d7-11d4-bdaf-00c04f60b9f0}
 
 | Параметр | По умолчанию | Описание |
 |---|---|---|
-| `-Threshold` | 14 | За сколько дней до истечения показывать предупреждение |
-| `-Message` | (русский) | Текст сообщения. Обязательно должен содержать `{0}` |
+| `-Threshold` | 14 | За сколько дней до истечения показывать предупреждение. Должен быть ≥ 1 (`[ValidateRange]`; 0 или отрицательное значение отклоняется) |
+| `-Message` | (русский) | Текст сообщения. Обязательно должен содержать `{0}` (проверяется `[ValidateScript]`, иначе запуск завершится ошибкой) |
 | `-Title` | (русский) | Заголовок окна |
 
 ## Требования
