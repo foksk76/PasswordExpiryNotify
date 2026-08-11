@@ -224,6 +224,7 @@ function Show-ChangePasswordDialog {
                 $err = 'Не удалось сменить пароль: ' + $_.Exception.Message
             }
         }
+        $old = $null; $new = $null; $confirm = $null
         if ($null -ne $err) {
             $lblError.Text = $err
             $lblError.Visibility = 'Visible'
