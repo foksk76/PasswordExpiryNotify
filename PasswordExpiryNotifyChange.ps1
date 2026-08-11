@@ -82,7 +82,6 @@ function Change-ADPassword {
     }
     catch {
         $winnt = [ADSI]"WinNT://$env:USERDOMAIN/$env:USERNAME"
-        if ($null -eq $winnt) { throw }
         $winnt.ChangePassword($OldPassword, $NewPassword)
     }
 }
@@ -230,7 +229,8 @@ function Show-ChangePasswordDialog {
             $lblError.Visibility = 'Visible'
         }
         else {
-            try { Set-Clipboard $null } catch { }
+            try { Set-Clipboard $null }
+            catch { Write-Warning 'PasswordExpiryNotify: не удалось очистить буфер обмена после смены пароля' }
             [System.Windows.MessageBox]::Show('Пароль изменён. Обновите запись в менеджере паролей (KeePass/Passbolt).', $Title, 'OK', 'Information') | Out-Null
             $window.DialogResult = $true
         }
@@ -249,7 +249,7 @@ function Show-ChangePasswordDialog {
     $scroll.Content = $panel
     $window.Content = $scroll
 
-    return ($window.ShowDialog() -eq $true)
+    $window.ShowDialog() | Out-Null
 }
 
 try {
