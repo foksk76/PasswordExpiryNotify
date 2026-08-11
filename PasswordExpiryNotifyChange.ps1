@@ -110,7 +110,7 @@ function Show-ChangePasswordDialog {
     $panel.Margin = New-Object System.Windows.Thickness -ArgumentList 16
 
     $head = New-Object System.Windows.Controls.TextBlock
-    $head.Text = 'Вставьте пароли из менеджера паролей (KeePass/Passbolt): кнопка «Вставить из буфера» или Ctrl+V.'
+    $head.Text = 'Введите текущий и новый пароль.'
     $head.TextWrapping = 'Wrap'
     $head.Margin = New-Object System.Windows.Thickness -ArgumentList 0,0,0,12
 
@@ -231,7 +231,7 @@ function Show-ChangePasswordDialog {
         else {
             try { Set-Clipboard $null }
             catch { Write-Warning 'PasswordExpiryNotify: не удалось очистить буфер обмена после смены пароля' }
-            [System.Windows.MessageBox]::Show('Пароль изменён. Обновите запись в менеджере паролей (KeePass/Passbolt).', $Title, 'OK', 'Information') | Out-Null
+            [System.Windows.MessageBox]::Show('Пароль изменён.', $Title, 'OK', 'Information') | Out-Null
             $window.DialogResult = $true
         }
     })
