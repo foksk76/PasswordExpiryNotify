@@ -29,11 +29,13 @@ function Show-WarningDialog {
     # Возвращает $true, если нажата кнопка «Сменить пароль».
     $window = New-Object System.Windows.Window
     $window.Title = $Title
-    $window.ResizeMode = 'NoResize'
+    $window.ResizeMode = 'CanResize'
     $window.WindowStartupLocation = 'CenterScreen'
     $window.Topmost = $true
     $window.Width = 560
     $window.Height = 220
+    $window.MinWidth = 480
+    $window.MinHeight = 180
 
     $panel = New-Object System.Windows.Controls.StackPanel
     $panel.Margin = New-Object System.Windows.Thickness -ArgumentList 16
@@ -101,10 +103,12 @@ function Show-ChangePasswordDialog {
     # в отличие от secure desktop (Ctrl+Alt+Del/End). Возвращает $true при успехе.
     $window = New-Object System.Windows.Window
     $window.Title = "$Title — смена пароля"
-    $window.ResizeMode = 'NoResize'
+    $window.ResizeMode = 'CanResize'
     $window.WindowStartupLocation = 'CenterScreen'
     $window.Width = 600
     $window.Height = 360
+    $window.MinWidth = 520
+    $window.MinHeight = 300
 
     $panel = New-Object System.Windows.Controls.StackPanel
     $panel.Margin = New-Object System.Windows.Thickness -ArgumentList 16
@@ -112,11 +116,13 @@ function Show-ChangePasswordDialog {
     $head = New-Object System.Windows.Controls.TextBlock
     $head.Text = 'Введите текущий и новый пароль.'
     $head.TextWrapping = 'Wrap'
+    $head.FontSize = 13
     $head.Margin = New-Object System.Windows.Thickness -ArgumentList 0,0,0,12
 
     $lblOld = New-Object System.Windows.Controls.TextBlock
     $lblOld.Text = 'Текущий пароль:'
     $lblOld.Width = 170
+    $lblOld.FontSize = 13
     $lblOld.VerticalAlignment = 'Center'
 
     $btnPasteOld = New-Object System.Windows.Controls.Button
@@ -126,6 +132,7 @@ function Show-ChangePasswordDialog {
 
     $txtOld = New-Object System.Windows.Controls.PasswordBox
     $txtOld.Height = 24
+    $txtOld.MinWidth = 200
     $txtOld.VerticalAlignment = 'Center'
     $btnPasteOld.Add_Click({ Set-FromClipboard $txtOld })
 
@@ -140,6 +147,7 @@ function Show-ChangePasswordDialog {
     $lblNew = New-Object System.Windows.Controls.TextBlock
     $lblNew.Text = 'Новый пароль:'
     $lblNew.Width = 170
+    $lblNew.FontSize = 13
     $lblNew.VerticalAlignment = 'Center'
 
     $btnPasteNew = New-Object System.Windows.Controls.Button
@@ -149,6 +157,7 @@ function Show-ChangePasswordDialog {
 
     $txtNew = New-Object System.Windows.Controls.PasswordBox
     $txtNew.Height = 24
+    $txtNew.MinWidth = 200
     $txtNew.VerticalAlignment = 'Center'
     $btnPasteNew.Add_Click({ Set-FromClipboard $txtNew })
 
@@ -163,6 +172,7 @@ function Show-ChangePasswordDialog {
     $lblConfirm = New-Object System.Windows.Controls.TextBlock
     $lblConfirm.Text = 'Подтверждение:'
     $lblConfirm.Width = 170
+    $lblConfirm.FontSize = 13
     $lblConfirm.VerticalAlignment = 'Center'
 
     $btnPasteConfirm = New-Object System.Windows.Controls.Button
@@ -172,6 +182,7 @@ function Show-ChangePasswordDialog {
 
     $txtConfirm = New-Object System.Windows.Controls.PasswordBox
     $txtConfirm.Height = 24
+    $txtConfirm.MinWidth = 200
     $txtConfirm.VerticalAlignment = 'Center'
     $btnPasteConfirm.Add_Click({ Set-FromClipboard $txtConfirm })
 
@@ -186,6 +197,7 @@ function Show-ChangePasswordDialog {
     $lblError = New-Object System.Windows.Controls.TextBlock
     $lblError.Foreground = [System.Windows.Media.Brushes]::Red
     $lblError.TextWrapping = 'Wrap'
+    $lblError.FontSize = 13
     $lblError.Margin = New-Object System.Windows.Thickness -ArgumentList 0,0,0,8
     $lblError.Visibility = 'Collapsed'
 
@@ -248,6 +260,8 @@ function Show-ChangePasswordDialog {
     $scroll = New-Object System.Windows.Controls.ScrollViewer
     $scroll.Content = $panel
     $window.Content = $scroll
+
+    $window.Add_Loaded({ $txtOld.Focus() })
 
     $window.ShowDialog() | Out-Null
 }
