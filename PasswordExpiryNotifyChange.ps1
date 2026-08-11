@@ -32,10 +32,10 @@ function Show-WarningDialog {
     $window.ResizeMode = 'CanResize'
     $window.WindowStartupLocation = 'CenterScreen'
     $window.Topmost = $true
+    $window.SizeToContent = 'Height'
     $window.Width = 560
-    $window.Height = 220
+    $window.MaxHeight = 480
     $window.MinWidth = 480
-    $window.MinHeight = 180
 
     $panel = New-Object System.Windows.Controls.StackPanel
     $panel.Margin = New-Object System.Windows.Thickness -ArgumentList 16
@@ -49,6 +49,7 @@ function Show-WarningDialog {
     $buttons = New-Object System.Windows.Controls.StackPanel
     $buttons.Orientation = 'Horizontal'
     $buttons.HorizontalAlignment = 'Right'
+    $buttons.Margin = New-Object System.Windows.Thickness -ArgumentList 16,8,16,16
 
     $btnChange = New-Object System.Windows.Controls.Button
     $btnChange.Content = 'Сменить пароль'
@@ -66,11 +67,23 @@ function Show-WarningDialog {
     $buttons.Children.Add($btnChange) | Out-Null
     $buttons.Children.Add($btnLater) | Out-Null
     $panel.Children.Add($text) | Out-Null
-    $panel.Children.Add($buttons) | Out-Null
 
     $scroll = New-Object System.Windows.Controls.ScrollViewer
     $scroll.Content = $panel
-    $window.Content = $scroll
+
+    # Кнопки вне скролла: фиксированная нижняя строка, скроллится только контент
+    $root = New-Object System.Windows.Controls.Grid
+    $rowContent = New-Object System.Windows.Controls.RowDefinition
+    $rowContent.Height = New-Object System.Windows.GridLength -ArgumentList 1, ([System.Windows.GridUnitType]::Star)
+    $rowButtons = New-Object System.Windows.Controls.RowDefinition
+    $rowButtons.Height = New-Object System.Windows.GridLength -ArgumentList 0, ([System.Windows.GridUnitType]::Auto)
+    $root.RowDefinitions.Add($rowContent) | Out-Null
+    $root.RowDefinitions.Add($rowButtons) | Out-Null
+    [System.Windows.Controls.Grid]::SetRow($scroll, 0)
+    [System.Windows.Controls.Grid]::SetRow($buttons, 1)
+    $root.Children.Add($scroll) | Out-Null
+    $root.Children.Add($buttons) | Out-Null
+    $window.Content = $root
 
     return ($window.ShowDialog() -eq $true)
 }
@@ -105,10 +118,12 @@ function Show-ChangePasswordDialog {
     $window.Title = "$Title — смена пароля"
     $window.ResizeMode = 'CanResize'
     $window.WindowStartupLocation = 'CenterScreen'
+    $window.SizeToContent = 'Height'
     $window.Width = 600
-    $window.Height = 360
-    $window.MinWidth = 520
-    $window.MinHeight = 300
+    $window.MaxHeight = 480
+    # Минимум по содержимому ряда: подпись 170 + кнопка вставки 150 + поле 200 + паддинги
+    $window.MinWidth = 560
+    $window.MinHeight = 240
 
     $panel = New-Object System.Windows.Controls.StackPanel
     $panel.Margin = New-Object System.Windows.Thickness -ArgumentList 16
@@ -204,6 +219,7 @@ function Show-ChangePasswordDialog {
     $buttons = New-Object System.Windows.Controls.StackPanel
     $buttons.Orientation = 'Horizontal'
     $buttons.HorizontalAlignment = 'Right'
+    $buttons.Margin = New-Object System.Windows.Thickness -ArgumentList 16,8,16,16
 
     $btnOk = New-Object System.Windows.Controls.Button
     $btnOk.Content = 'Сменить'
@@ -255,11 +271,23 @@ function Show-ChangePasswordDialog {
     $panel.Children.Add($rowNew) | Out-Null
     $panel.Children.Add($rowConfirm) | Out-Null
     $panel.Children.Add($lblError) | Out-Null
-    $panel.Children.Add($buttons) | Out-Null
 
     $scroll = New-Object System.Windows.Controls.ScrollViewer
     $scroll.Content = $panel
-    $window.Content = $scroll
+
+    # Кнопки вне скролла: фиксированная нижняя строка, скроллится только контент
+    $root = New-Object System.Windows.Controls.Grid
+    $rowContent = New-Object System.Windows.Controls.RowDefinition
+    $rowContent.Height = New-Object System.Windows.GridLength -ArgumentList 1, ([System.Windows.GridUnitType]::Star)
+    $rowButtons = New-Object System.Windows.Controls.RowDefinition
+    $rowButtons.Height = New-Object System.Windows.GridLength -ArgumentList 0, ([System.Windows.GridUnitType]::Auto)
+    $root.RowDefinitions.Add($rowContent) | Out-Null
+    $root.RowDefinitions.Add($rowButtons) | Out-Null
+    [System.Windows.Controls.Grid]::SetRow($scroll, 0)
+    [System.Windows.Controls.Grid]::SetRow($buttons, 1)
+    $root.Children.Add($scroll) | Out-Null
+    $root.Children.Add($buttons) | Out-Null
+    $window.Content = $root
 
     $window.Add_Loaded({ $txtOld.Focus() })
 
