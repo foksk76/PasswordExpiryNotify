@@ -29,13 +29,12 @@ function Show-WarningDialog {
     # Возвращает $true, если нажата кнопка «Сменить пароль».
     $window = New-Object System.Windows.Window
     $window.Title = $Title
-    $window.ResizeMode = 'CanResize'
+    $window.ResizeMode = 'NoResize'
     $window.WindowStartupLocation = 'CenterScreen'
     $window.Topmost = $true
     $window.SizeToContent = 'Height'
     $window.Width = 560
     $window.MaxHeight = 480
-    $window.MinWidth = 480
 
     $panel = New-Object System.Windows.Controls.StackPanel
     $panel.Margin = New-Object System.Windows.Thickness -ArgumentList 16
@@ -116,14 +115,11 @@ function Show-ChangePasswordDialog {
     # в отличие от secure desktop (Ctrl+Alt+Del/End). Возвращает $true при успехе.
     $window = New-Object System.Windows.Window
     $window.Title = "$Title — смена пароля"
-    $window.ResizeMode = 'CanResize'
+    $window.ResizeMode = 'NoResize'
     $window.WindowStartupLocation = 'CenterScreen'
     $window.SizeToContent = 'Height'
     $window.Width = 600
     $window.MaxHeight = 480
-    # Минимум по содержимому ряда: подпись 170 + кнопка вставки 150 + поле 200 + паддинги
-    $window.MinWidth = 560
-    $window.MinHeight = 240
 
     $panel = New-Object System.Windows.Controls.StackPanel
     $panel.Margin = New-Object System.Windows.Thickness -ArgumentList 16
